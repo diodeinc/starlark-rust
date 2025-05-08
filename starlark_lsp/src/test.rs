@@ -297,6 +297,23 @@ impl LspContext for TestServerContext {
                 .collect(),
         }
     }
+
+    fn handle_custom_request(
+        &self,
+        req: &lsp_server::Request,
+        _initialize_params: &lsp_types::InitializeParams,
+    ) -> Option<lsp_server::Response> {
+        if req.method == "starlark/echo" {
+            let payload: String = serde_json::from_value(req.params.clone()).ok()?;
+            Some(lsp_server::Response {
+                id: req.id.clone(),
+                result: Some(serde_json::to_value(format!("echo:{}", payload)).unwrap()),
+                error: None,
+            })
+        } else {
+            None
+        }
+    }
 }
 
 /// A server for use in testing that provides helpers for sending requests, correlating
