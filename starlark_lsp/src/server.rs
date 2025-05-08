@@ -33,9 +33,7 @@ use itertools::Itertools;
 use lsp_server::Connection;
 use lsp_server::Message;
 use lsp_server::Notification;
-use lsp_server::Request;
 use lsp_server::RequestId;
-use lsp_server::Response;
 use lsp_server::ResponseError;
 use lsp_types::CompletionItem;
 use lsp_types::CompletionItemKind;
@@ -98,6 +96,9 @@ use starlark_syntax::codemap::ResolvedPos;
 use starlark_syntax::syntax::ast::AstPayload;
 use starlark_syntax::syntax::ast::LoadArgP;
 use starlark_syntax::syntax::module::AstModuleFields;
+
+pub use lsp_server::Request;
+pub use lsp_server::Response;
 
 use crate::completion::StringCompletionResult;
 use crate::completion::StringCompletionType;
