@@ -373,6 +373,27 @@ pub trait LspContext {
         let _unused = (document_uri, kind, current_value, workspace_root);
         Ok(Vec::new())
     }
+
+    /// Handle custom LSP request messages that are not recognised by the core `starlark_lsp`
+    /// implementation. Implementations should return [`Some(Response)`] when the request
+    /// identified by `req.method` has been handled, or [`None`] to signal that the message is
+    /// unsupported and can be safely ignored.
+    fn handle_custom_request(
+        &self,
+        _req: &lsp_server::Request,
+        _initialize_params: &lsp_types::InitializeParams,
+    ) -> Option<lsp_server::Response> {
+        None
+    }
+
+    /// Handle custom LSP notification messages that are not recognised by the core
+    /// implementation. The default implementation is a no-op.
+    fn handle_custom_notification(
+        &self,
+        _notification: &lsp_server::Notification,
+        _initialize_params: &lsp_types::InitializeParams,
+    ) {
+    }
 }
 
 /// Errors when [`LspContext::resolve_load()`] cannot resolve a given path.
@@ -1232,6 +1253,10 @@ impl<T: LspContext> Backend<T> {
                         self.hover(req.id, params, &initialize_params);
                     } else if self.connection.handle_shutdown(&req)? {
                         return Ok(());
+                    } else if let Some(resp) =
+                        self.context.handle_custom_request(&req, &initialize_params)
+                    {
+                        self.send_response(resp);
                     }
                     // Currently don't handle any other requests
                 }
@@ -1242,6 +1267,9 @@ impl<T: LspContext> Backend<T> {
                         self.did_change(params)?;
                     } else if let Some(params) = as_notification::<DidCloseTextDocument>(&x) {
                         self.did_close(params)?;
+                    } else {
+                        self.context
+                            .handle_custom_notification(&x, &initialize_params);
                     }
                 }
                 Message::Response(_) => {
@@ -2508,6 +2536,27 @@ mod tests {
                 case.2
             );
         }
+        Ok(())
+    }
+
+    #[test]
+    fn custom_request_echo() -> anyhow::Result<()> {
+        if starlark::wasm::is_wasm() {
+            return Ok(());
+        }
+
+        struct EchoRequest;
+        impl lsp_types::request::Request for EchoRequest {
+            type Params = String;
+            type Result = String;
+            const METHOD: &'static str = "starlark/echo";
+        }
+
+        let mut server = TestServer::new()?;
+        let req = server.new_request::<EchoRequest>("ping".to_owned());
+        let request_id = server.send_request(req)?;
+        let response: String = server.get_response(request_id)?;
+        assert_eq!(response, "echo:ping");
         Ok(())
     }
 }
