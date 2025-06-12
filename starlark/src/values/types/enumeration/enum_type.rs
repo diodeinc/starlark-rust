@@ -207,7 +207,7 @@ impl<'v> EnumType<'v> {
 }
 
 impl<V: EnumCell + Freeze> EnumTypeGen<V> {
-    pub(crate) fn elements(&self) -> &SmallMap<V, V> {
+    pub fn elements(&self) -> &SmallMap<V, V> {
         // Safe because we never mutate the elements after construction.
         unsafe { &*self.elements.get() }
     }
