@@ -24,6 +24,7 @@ use std::cell::Cell;
 use std::cell::RefCell;
 use std::mem;
 use std::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
 use allocative::Allocative;
@@ -430,6 +431,7 @@ impl Module {
             extra_value,
             heap_profile_on_freeze,
         } = self;
+        #[cfg(not(target_arch = "wasm32"))]
         let start = Instant::now();
         // This is when we do the GC/freeze, using the module slots as roots
         // Note that we even freeze anonymous slots, since they are accessed by
@@ -463,11 +465,16 @@ impl Module {
         // but can now be dropped
         mem::drop(heap);
 
+        #[cfg(not(target_arch = "wasm32"))]
+        let total_eval_duration = start.elapsed() + eval_duration.get();
+        #[cfg(target_arch = "wasm32")]
+        let total_eval_duration = eval_duration.get();
+
         Ok(FrozenModule {
             heap: frozen_heap.into_ref(),
             module: frozen_module_ref,
             extra_value,
-            eval_duration: start.elapsed() + eval_duration.get(),
+            eval_duration: total_eval_duration,
         })
     }
 
