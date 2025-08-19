@@ -129,7 +129,8 @@ pub(crate) mod thin_box_slice_frozen_value;
 mod trace;
 pub(crate) mod traits;
 pub mod type_repr;
-pub(crate) mod types;
+/// Types and type system support for Starlark values.
+pub mod types;
 pub mod typing;
 mod unpack;
 mod unpack_and_discard;

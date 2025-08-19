@@ -41,7 +41,8 @@
 //! # "#);
 //! ```
 
-pub(crate) mod field;
+/// Field specifications for record types.
+pub mod field;
 pub(crate) mod globals;
 pub(crate) mod instance;
 pub(crate) mod matcher;
