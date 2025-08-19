@@ -77,6 +77,16 @@ impl<V: ValueLifetimeless> FieldGen<V> {
     pub(crate) fn new(typ: TypeCompiled<V>, default: Option<V>) -> Self {
         Self { typ, default }
     }
+
+    /// Get the type specification for this field (public accessor)
+    pub fn typ(&self) -> &TypeCompiled<V> {
+        &self.typ
+    }
+
+    /// Get the default value for this field (public accessor)
+    pub fn default(&self) -> Option<&V> {
+        self.default.as_ref()
+    }
 }
 
 impl<'v, V: ValueLike<'v>> FieldGen<V> {
