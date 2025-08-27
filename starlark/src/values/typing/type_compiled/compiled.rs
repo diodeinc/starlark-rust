@@ -327,6 +327,17 @@ impl<'v, V: ValueLike<'v>> TypeCompiled<V> {
         self.0
     }
 
+    /// Get the name of a custom type (like enum name) if this type represents a custom type
+    pub fn custom_type_name(&self) -> Option<&'v str> {
+        match self.downcast() {
+            Ok(type_compiled_dyn) => {
+                let ty = type_compiled_dyn.as_ty_dyn();
+                ty.as_name()
+            }
+            Err(_) => None,
+        }
+    }
+
     pub(crate) fn write_hash(self, hasher: &mut StarlarkHasher) -> crate::Result<()> {
         self.to_value().0.write_hash(hasher)
     }
