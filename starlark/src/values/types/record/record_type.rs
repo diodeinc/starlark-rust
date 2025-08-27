@@ -178,7 +178,7 @@ where
     Self: ProvidesStaticType<'v>,
     FieldGen<V>: ProvidesStaticType<'v>,
 {
-    pub(crate) fn ty_record_data(&self) -> Option<&Arc<TyRecordData>> {
+    pub fn ty_record_data(&self) -> Option<&Arc<TyRecordData>> {
         V::get_ty(&self.ty_record_data)
     }
 
@@ -187,6 +187,11 @@ where
             .expect("Instances can only be created if named are assigned")
             .ty_record
             .dupe()
+    }
+
+    /// Get the field definitions of this record type (public accessor for field introspection)
+    pub fn fields(&self) -> &SmallMap<String, FieldGen<V>> {
+        &self.fields
     }
 
     fn make_parameter_spec(

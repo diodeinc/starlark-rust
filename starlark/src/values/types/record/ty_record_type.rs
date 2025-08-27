@@ -26,7 +26,7 @@ use crate::values::types::type_instance_id::TypeInstanceId;
 #[doc(hidden)]
 pub struct TyRecordData {
     /// Name of the record type.
-    pub(crate) name: String,
+    pub name: String,
     /// Globally unique id of the record type.
     pub(crate) id: TypeInstanceId,
     /// Type of record instance.
