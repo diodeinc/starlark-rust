@@ -181,12 +181,15 @@ impl<'v> StarlarkValue<'v> for PointerI32 {
             NumRef::Int(StarlarkIntRef::Small(self.get())) * other.unpack_num()?,
         )))
     }
-    fn div(&self, other: Value<'v>, heap: &'v Heap) -> crate::Result<Value<'v>> {
+    fn div(&self, other: Value<'v>, heap: &'v Heap) -> Option<crate::Result<Value<'v>>> {
         match other.unpack_num() {
             Some(other) => {
-                Ok(heap.alloc(NumRef::Int(StarlarkIntRef::Small(self.get())).div(other)?))
+                match NumRef::Int(StarlarkIntRef::Small(self.get())).div(other) {
+                    Ok(result) => Some(Ok(heap.alloc(result))),
+                    Err(e) => Some(Err(e.into())),
+                }
             }
-            None => ValueError::unsupported_with(self, "/", other),
+            None => None,
         }
     }
     fn percent(&self, other: Value<'v>, heap: &'v Heap) -> crate::Result<Value<'v>> {

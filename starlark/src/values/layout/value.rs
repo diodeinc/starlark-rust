@@ -630,7 +630,13 @@ impl<'v> Value<'v> {
 
     /// `x / other`.
     pub fn div(self, other: Value<'v>, heap: &'v Heap) -> crate::Result<Value<'v>> {
-        self.get_ref().div(other, heap)
+        match self.get_ref().div(other, heap) {
+            Some(r) => r,
+            _ => match other.get_ref().rdiv(self, heap) {
+                Some(r) => r,
+                _ => ValueError::unsupported_owned(self.get_type(), "/", Some(other.get_type())),
+            },
+        }
     }
 
     /// `x // other`.

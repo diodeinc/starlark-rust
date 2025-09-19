@@ -464,8 +464,13 @@ impl<'v> AValueDyn<'v> {
     }
 
     #[inline]
-    pub(crate) fn div(self, other: Value<'v>, heap: &'v Heap) -> crate::Result<Value<'v>> {
+    pub(crate) fn div(self, other: Value<'v>, heap: &'v Heap) -> Option<crate::Result<Value<'v>>> {
         (self.vtable.starlark_value.div)(self.value, other, heap)
+    }
+
+    #[inline]
+    pub(crate) fn rdiv(self, other: Value<'v>, heap: &'v Heap) -> Option<crate::Result<Value<'v>>> {
+        (self.vtable.starlark_value.rdiv)(self.value, other, heap)
     }
 
     #[inline]

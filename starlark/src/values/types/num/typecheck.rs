@@ -81,6 +81,7 @@ pub(crate) fn typecheck_num_bin_op(lhs: NumTy, op: TypingBinOp, rhs: &TyBasic) -
         (NumTy::Int, BinOpClass::Add, NumRhsTy::Num(NumTy::Int)) => Some(Ty::int()),
         (_, BinOpClass::Add, NumRhsTy::Num(NumTy::Float)) => Some(Ty::float()),
         (_, BinOpClass::Add, NumRhsTy::Any) => Some(int_or_float()),
+        (_, BinOpClass::Div, NumRhsTy::Any) => Some(Ty::any()),
         (_, BinOpClass::Div, _) => Some(Ty::float()),
         (NumTy::Int, BinOpClass::BitAnd, NumRhsTy::Num(NumTy::Int) | NumRhsTy::Any) => {
             Some(Ty::int())
