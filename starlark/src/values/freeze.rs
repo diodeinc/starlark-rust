@@ -65,6 +65,14 @@ pub trait Freeze {
     fn freeze(self, freezer: &Freezer) -> FreezeResult<Self::Frozen>;
 }
 
+impl Freeze for rust_decimal::Decimal {
+    type Frozen = rust_decimal::Decimal;
+
+    fn freeze(self, _freezer: &Freezer) -> FreezeResult<rust_decimal::Decimal> {
+        Ok(self)
+    }
+}
+
 impl Freeze for String {
     type Frozen = String;
 
