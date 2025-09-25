@@ -436,7 +436,8 @@ impl<'v> TypeCompiled<Value<'v>> {
         }
     }
 
-    pub(crate) fn from_ty(ty: &Ty, heap: &'v Heap) -> Self {
+    /// Create compiled type from type information.
+    pub fn from_ty(ty: &Ty, heap: &'v Heap) -> Self {
         TypeCompiledFactory::alloc_ty(ty, heap)
     }
 
