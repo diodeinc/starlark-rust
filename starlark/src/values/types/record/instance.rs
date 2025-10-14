@@ -110,7 +110,9 @@ where
 {
     fn equals(&self, other: Value<'v>) -> crate::Result<bool> {
         match Record::from_value(other) {
-            Some(other) if self.typ.equals(other.typ)? => {
+            // Compare by TypeInstanceId instead of RecordType object identity
+            // to support stable types across module re-evaluations
+            Some(other) if self.record_type_id() == other.record_type_id() => {
                 equals_slice(&self.values, &other.values, |x, y| x.equals(*y))
             }
             _ => Ok(false),
@@ -127,7 +129,9 @@ where
     }
 
     fn write_hash(&self, hasher: &mut StarlarkHasher) -> crate::Result<()> {
-        self.typ.write_hash(hasher)?;
+        // Hash the stable TypeInstanceId instead of the RecordType object
+        // to support stable hashing across module re-evaluations
+        std::hash::Hash::hash(&self.record_type_id(), hasher);
         for v in &*self.values {
             v.write_hash(hasher)?;
         }

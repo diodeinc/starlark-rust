@@ -71,6 +71,28 @@ use crate::values::record::ty_record_type::TyRecordData;
 use crate::values::types::type_instance_id::TypeInstanceId;
 use crate::values::typing::type_compiled::type_matcher_factory::TypeMatcherFactory;
 
+/// Returns a cached TypeInstanceId for the given record field signature.
+/// Records with identical field names and types share the same TypeInstanceId.
+fn type_instance_id_for_fields<'v, V: ValueLike<'v> + RecordCell>(
+    fields: &SmallMap<String, FieldGen<V>>,
+) -> TypeInstanceId {
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+    use std::sync::OnceLock;
+    static CACHE: OnceLock<Mutex<HashMap<Vec<(String, Ty)>, TypeInstanceId>>> = OnceLock::new();
+    let mut sig: Vec<(String, Ty)> = fields
+        .iter()
+        .map(|(name, field)| (name.clone(), field.ty()))
+        .collect();
+    sig.sort_by(|a, b| a.0.cmp(&b.0));
+    *CACHE
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .unwrap()
+        .entry(sig)
+        .or_insert_with(TypeInstanceId::r#gen)
+}
+
 #[doc(hidden)]
 pub trait RecordCell: ValueLifetimeless {
     type TyRecordDataOpt: Debug;
@@ -155,7 +177,7 @@ pub(crate) fn record_fields<'v>(
 impl<'v> RecordType<'v> {
     pub(crate) fn new(fields: SmallMap<String, FieldGen<Value<'v>>>) -> Self {
         Self {
-            id: TypeInstanceId::r#gen(),
+            id: type_instance_id_for_fields(&fields),
             fields,
             ty_record_data: OnceCell::new(),
         }
