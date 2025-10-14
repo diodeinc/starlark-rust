@@ -74,7 +74,7 @@ unsafe impl<From: Coerce<To> + ValueLifetimeless, To: ValueLifetimeless> Coerce<
 starlark_complex_value!(pub(crate) Field);
 
 impl<V: ValueLifetimeless> FieldGen<V> {
-    pub(crate) fn new(typ: TypeCompiled<V>, default: Option<V>) -> Self {
+    pub fn new(typ: TypeCompiled<V>, default: Option<V>) -> Self {
         Self { typ, default }
     }
 
