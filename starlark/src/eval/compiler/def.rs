@@ -688,7 +688,15 @@ where
 {
     pub(crate) fn bc(&self) -> &Bc {
         if Self::FROZEN {
-            self.optimized_on_freeze_stmt.get()
+            let optimized = self.optimized_on_freeze_stmt.get();
+            // If optimized bytecode hasn't been set yet (pre-post_freeze),
+            // fall back to the original compiled bytecode.
+            // Default Bc has local_count=0 and max_stack_size=0.
+            if optimized.local_count == 0 && optimized.max_stack_size == 0 {
+                &self.def_info.stmt_compiled
+            } else {
+                optimized
+            }
         } else {
             &self.def_info.stmt_compiled
         }
