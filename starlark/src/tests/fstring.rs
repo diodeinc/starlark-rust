@@ -106,6 +106,12 @@ f"{x}" == '("x",)'
         assert().is_true(r#"x = 'a'; f"{x!s}" == 'a'"#);
         assert().is_true(r#"x = 'a'; f"{x!r}" == '"a"'"#);
     }
+
+    #[test]
+    fn dot_expression() {
+        assert().is_true(r#"x = struct(y = "a"); f"{x.y}" == "a""#);
+        assert().is_true(r#"x = struct(y = "a"); f"{ x . y }" == "a""#);
+    }
 }
 
 mod fail {

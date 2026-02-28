@@ -223,8 +223,9 @@ pub(crate) fn fstring(
                 let capture_begin = begin + content_start_offset + pos;
                 let capture_end = capture_begin + capture.len();
 
-                let ident = match lex_exactly_one_identifier(capture) {
-                    Some(ident) => ident,
+                let expr = match parse_fstring_capture_identifier_expression(capture, capture_begin)
+                {
+                    Some(expr) => expr,
                     None => {
                         parser_state.error(
                             Span::new(Pos::new(capture_begin as _), Pos::new(capture_end as _)),
@@ -236,10 +237,6 @@ pub(crate) fn fstring(
                     }
                 };
 
-                let expr = ExprP::Identifier(
-                    IdentP { ident, payload: () }.ast(capture_begin, capture_end),
-                )
-                .ast(capture_begin, capture_end);
                 expressions.push(expr);
                 // Positional format.
                 match conv {
@@ -265,6 +262,92 @@ pub(crate) fn fstring(
         expressions,
     }
     .ast(begin, end)
+}
+
+fn parse_fstring_capture_identifier_expression(
+    capture: &str,
+    capture_begin: usize,
+) -> Option<AstExpr> {
+    fn parse_one_identifier(capture: &str, i: &mut usize) -> Option<(String, usize, usize)> {
+        let bytes = capture.as_bytes();
+        while *i < bytes.len() && bytes[*i].is_ascii_whitespace() {
+            *i += 1;
+        }
+
+        let ident_begin = *i;
+        while *i < bytes.len() && !bytes[*i].is_ascii_whitespace() && bytes[*i] != b'.' {
+            *i += 1;
+        }
+
+        if ident_begin == *i {
+            return None;
+        }
+
+        let ident = lex_exactly_one_identifier(&capture[ident_begin..*i])?;
+        Some((ident, ident_begin, *i))
+    }
+
+    let mut i = 0;
+    let (first_ident, first_begin, first_end) = parse_one_identifier(capture, &mut i)?;
+    let mut expr = ExprP::Identifier(
+        IdentP {
+            ident: first_ident,
+            payload: (),
+        }
+        .ast(capture_begin + first_begin, capture_begin + first_end),
+    )
+    .ast(capture_begin + first_begin, capture_begin + first_end);
+
+    loop {
+        let bytes = capture.as_bytes();
+        while i < bytes.len() && bytes[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        if i == bytes.len() {
+            return Some(expr);
+        }
+        if bytes[i] != b'.' {
+            return None;
+        }
+        i += 1;
+
+        let (ident, ident_begin, ident_end) = parse_one_identifier(capture, &mut i)?;
+        let attr = ident.ast(capture_begin + ident_begin, capture_begin + ident_end);
+        let expr_begin = expr.span.begin().get() as usize;
+        expr = ExprP::Dot(Box::new(expr), attr).ast(expr_begin, capture_begin + ident_end);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::syntax::ast::ExprP;
+    use crate::syntax::grammar_util::parse_fstring_capture_identifier_expression;
+
+    #[test]
+    fn fstring_capture_identifier_expression_dot() {
+        let expr = parse_fstring_capture_identifier_expression("a.b", 10).unwrap();
+        assert_eq!(format!("{}", expr.node), "a.b");
+        assert_eq!(expr.span.begin().get(), 10);
+        assert_eq!(expr.span.end().get(), 13);
+        assert!(matches!(expr.node, ExprP::Dot(..)));
+    }
+
+    #[test]
+    fn fstring_capture_identifier_expression_dot_with_spaces() {
+        let expr = parse_fstring_capture_identifier_expression(" a . b ", 10).unwrap();
+        assert_eq!(format!("{}", expr.node), "a.b");
+        assert_eq!(expr.span.begin().get(), 11);
+        assert_eq!(expr.span.end().get(), 16);
+        assert!(matches!(expr.node, ExprP::Dot(..)));
+    }
+
+    #[test]
+    fn fstring_capture_identifier_expression_rejects_non_dot_expression() {
+        assert!(parse_fstring_capture_identifier_expression("a[0]", 10).is_none());
+        assert!(parse_fstring_capture_identifier_expression("a.", 10).is_none());
+        assert!(parse_fstring_capture_identifier_expression(".a", 10).is_none());
+        assert!(parse_fstring_capture_identifier_expression("a.b c", 10).is_none());
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
