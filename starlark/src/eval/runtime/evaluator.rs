@@ -106,6 +106,8 @@ enum EvaluatorError {
     ZeroCallstackSize,
     #[error("Evaluation cancelled")]
     Cancelled,
+    #[error("`export_as` replacement already set (internal error)")]
+    ExportAsReplacementAlreadySet,
 }
 
 /// Number of bytes to allocate between GC's.
@@ -173,6 +175,8 @@ pub struct Evaluator<'v, 'a, 'e> {
     pub(crate) is_cancelled: Box<dyn Fn() -> bool + 'a>,
     /// A counter to track when to perform "infrequent" checks like cancellation, timeouts, etc
     pub(crate) infrequent_instr_check_counter: u32,
+    /// Replacement value requested by `export_as` for the next module binding store.
+    pub(crate) export_as_replacement: Option<Value<'v>>,
 }
 
 // We use this to validate that the Evaluator lifetimes have the expected variance.
@@ -266,6 +270,7 @@ impl<'v, 'a, 'e: 'a> Evaluator<'v, 'a, 'e> {
             max_callstack_size: None,
             is_cancelled: Box::new(|| false),
             infrequent_instr_check_counter: 0,
+            export_as_replacement: None,
         }
     }
 
@@ -643,9 +648,29 @@ impl<'v, 'a, 'e: 'a> Evaluator<'v, 'a, 'e> {
         name: &str,
         value: Value<'v>,
     ) -> crate::Result<()> {
-        value.export_as(name, self)?;
+        let previous = self.take_export_as_replacement();
+        debug_assert!(previous.is_none(), "stale `export_as` replacement");
+        let export_result = value.export_as(name, self);
+        let value = self.take_export_as_replacement().unwrap_or(value);
+        export_result?;
         self.module_env.set(name, value);
         Ok(())
+    }
+
+    /// Request that the next top-level module binding store use `value`
+    /// instead of the value whose `export_as` hook is currently running.
+    pub fn set_export_as_replacement(&mut self, value: Value<'v>) -> crate::Result<()> {
+        if self.export_as_replacement.is_some() {
+            return Err(crate::Error::new_other(
+                EvaluatorError::ExportAsReplacementAlreadySet,
+            ));
+        }
+        self.export_as_replacement = Some(value);
+        Ok(())
+    }
+
+    pub(crate) fn take_export_as_replacement(&mut self) -> Option<Value<'v>> {
+        self.export_as_replacement.take()
     }
 
     pub(crate) fn set_slot_module(&mut self, slot: ModuleSlotId, value: Value<'v>) {
@@ -752,6 +777,7 @@ impl<'v, 'a, 'e: 'a> Evaluator<'v, 'a, 'e> {
         self.current_frame.trace(tracer);
         self.call_stack.trace(tracer);
         self.time_flame_profile.trace(tracer);
+        self.export_as_replacement.trace(tracer);
     }
 
     /// Perform a garbage collection.
