@@ -259,7 +259,11 @@ impl InstrNoFlowImpl for InstrStoreModuleAndExportImpl {
         (source, slot, name): &(BcSlotIn, ModuleSlotId, String),
     ) -> crate::Result<()> {
         let v = frame.get_bc_slot(*source);
-        v.export_as(name.as_str(), eval)?;
+        let previous = eval.take_export_as_replacement();
+        debug_assert!(previous.is_none(), "stale `export_as` replacement");
+        let export_result = v.export_as(name.as_str(), eval);
+        let v = eval.take_export_as_replacement().unwrap_or(v);
+        export_result?;
         eval.set_slot_module(*slot, v);
         Ok(())
     }
