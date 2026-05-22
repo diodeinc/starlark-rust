@@ -298,6 +298,7 @@ impl ImplStarlarkValue {
         let arms = [
             self.bin_op_arm("Add", "radd"),
             self.bin_op_arm("Mul", "rmul"),
+            self.bin_op_arm("Div", "rdiv"),
         ];
         if arms.iter().all(Option::is_none) {
             // Use default implementation.

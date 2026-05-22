@@ -745,7 +745,15 @@ pub trait StarlarkValue<'v>:
         None
     }
 
+    /// Called on `rhs` of `lhs / rhs` when `lhs.div` fails.
+    fn rdiv(&self, lhs: Value<'v>, heap: Heap<'v>) -> Option<crate::Result<Value<'v>>> {
+        let _ignore = (lhs, heap);
+        None
+    }
+
     /// Divide the current value by `other`. Always results in a float value.
+    ///
+    /// When this function returns `None`, starlark-rust calls `rhs.rdiv(lhs)`.
     ///
     /// # Examples
     ///
@@ -755,8 +763,8 @@ pub trait StarlarkValue<'v>:
     /// 7 / 2 == 3.5
     /// # "#);
     /// ```
-    fn div(&self, other: Value<'v>, _heap: Heap<'v>) -> crate::Result<Value<'v>> {
-        ValueError::unsupported_with(self, "/", other)
+    fn div(&self, _rhs: Value<'v>, _heap: Heap<'v>) -> Option<crate::Result<Value<'v>>> {
+        None
     }
 
     /// Apply the percent operator between the current value and `other`. Usually used on

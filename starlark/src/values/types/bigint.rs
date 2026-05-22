@@ -244,10 +244,13 @@ impl<'v> StarlarkValue<'v> for StarlarkBigInt {
         )))
     }
 
-    fn div(&self, other: Value<'v>, heap: Heap<'v>) -> crate::Result<Value<'v>> {
+    fn div(&self, other: Value<'v>, heap: Heap<'v>) -> Option<crate::Result<Value<'v>>> {
         match other.unpack_num() {
-            Some(other) => Ok(heap.alloc(NumRef::Int(StarlarkIntRef::Big(self)).div(other)?)),
-            None => ValueError::unsupported_with(self, "/", other),
+            Some(other) => match NumRef::Int(StarlarkIntRef::Big(self)).div(other) {
+                Ok(result) => Some(Ok(heap.alloc(result))),
+                Err(e) => Some(Err(e.into())),
+            },
+            None => None,
         }
     }
 

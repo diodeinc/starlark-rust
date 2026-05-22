@@ -306,10 +306,13 @@ impl<'v> StarlarkValue<'v> for StarlarkFloat {
         Some(Ok(heap.alloc(NumRef::Float(*self) * other.unpack_num()?)))
     }
 
-    fn div(&self, other: Value, heap: Heap<'v>) -> crate::Result<Value<'v>> {
+    fn div(&self, other: Value, heap: Heap<'v>) -> Option<crate::Result<Value<'v>>> {
         match other.unpack_num() {
-            None => ValueError::unsupported_with(self, "/", other),
-            Some(other) => Ok(heap.alloc(NumRef::Float(*self).div(other)?)),
+            None => None,
+            Some(other) => match NumRef::Float(*self).div(other) {
+                Ok(result) => Some(Ok(heap.alloc(result))),
+                Err(e) => Some(Err(e.into())),
+            },
         }
     }
 
