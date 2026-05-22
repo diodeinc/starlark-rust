@@ -25,6 +25,7 @@ use std::cell::RefCell;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
 use allocative::Allocative;
@@ -565,14 +566,16 @@ impl<'v> Module<'v> {
             frozen_def.post_freeze(frozen_module_ref, heap, freezer.heap);
         }
 
+        #[cfg(not(target_arch = "wasm32"))]
+        let total_eval_duration = start.elapsed() + eval_duration.get();
+        #[cfg(target_arch = "wasm32")]
+        let total_eval_duration = eval_duration.get();
+
         Ok(FrozenModule {
             heap: frozen_heap.into_ref_impl(name, Some(heap.peak_allocated_bytes())),
             module: frozen_module_ref,
             extra_value,
-            #[cfg(not(target_arch = "wasm32"))]
-            eval_duration: start.elapsed() + eval_duration.get(),
-            #[cfg(target_arch = "wasm32")]
-            eval_duration: eval_duration.get(),
+            eval_duration: total_eval_duration,
         })
     }
 
