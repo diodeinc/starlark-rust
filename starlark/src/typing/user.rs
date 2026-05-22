@@ -296,6 +296,16 @@ impl TyCustomImpl for TyUser {
         }
         self.supertypes.iter().any(|x| x == other)
     }
+
+    // TODO: remove after there's a way to register custom bin_ops
+    fn bin_op(
+            &self,
+            _bin_op: super::TypingBinOp,
+            _rhs: &TyBasic,
+            _ctx: &TypingOracleCtx,
+        ) -> Result<Ty, TypingNoContextOrInternalError> {
+        Ok(Ty::any())
+    }
 }
 
 #[cfg(test)]
