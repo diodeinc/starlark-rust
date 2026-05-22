@@ -122,6 +122,10 @@ be informative."
     ZeroTickLimit,
     #[error("Execution duration limit of {0} ticks has been exceeded")]
     TickLimitExceeded(u64),
+    #[error("`export_as` replacement already set (internal error)")]
+    ExportAsReplacementAlreadySet,
+    #[error("`export_as` replacement set outside `export_as` (internal error)")]
+    ExportAsReplacementNotActive,
 }
 
 /// Number of bytes to allocate between GC's.
@@ -201,6 +205,8 @@ pub struct Evaluator<'v, 'a, 'e> {
     pub(crate) infrequent_instr_check_counter: u32,
     /// Total number of ticks executed so far
     pub(crate) total_tick_count_at_last_infrequent_check: u64,
+    /// Replacement values requested by active `export_as` hooks.
+    pub(crate) export_as_replacements: Vec<Option<Value<'v>>>,
 }
 
 // We use this to validate that the Evaluator lifetimes have the expected variance.
@@ -300,6 +306,7 @@ impl<'v, 'a, 'e: 'a> Evaluator<'v, 'a, 'e> {
             is_cancelled: Box::new(|| false),
             infrequent_instr_check_counter: 0,
             total_tick_count_at_last_infrequent_check: 0,
+            export_as_replacements: Vec::new(),
         }
     }
 
@@ -683,9 +690,40 @@ impl<'v, 'a, 'e: 'a> Evaluator<'v, 'a, 'e> {
         name: &str,
         value: Value<'v>,
     ) -> crate::Result<()> {
-        value.export_as(name, self)?;
+        let value = self.export_as_module_binding(name, value)?;
         self.module_env.set(name, value);
         Ok(())
+    }
+
+    /// Request that the next top-level module binding store use `value`
+    /// instead of the value whose `export_as` hook is currently running.
+    pub fn set_export_as_replacement(&mut self, value: Value<'v>) -> crate::Result<()> {
+        let replacement = self
+            .export_as_replacements
+            .last_mut()
+            .ok_or_else(|| crate::Error::new_other(EvaluatorError::ExportAsReplacementNotActive))?;
+        if replacement.is_some() {
+            return Err(crate::Error::new_other(
+                EvaluatorError::ExportAsReplacementAlreadySet,
+            ));
+        }
+        *replacement = Some(value);
+        Ok(())
+    }
+
+    pub(crate) fn export_as_module_binding(
+        &mut self,
+        name: &str,
+        value: Value<'v>,
+    ) -> crate::Result<Value<'v>> {
+        self.export_as_replacements.push(None);
+        let export_result = value.export_as(name, self);
+        let replacement = self
+            .export_as_replacements
+            .pop()
+            .expect("export_as replacement stack underflow");
+        export_result?;
+        Ok(replacement.unwrap_or(value))
     }
 
     pub(crate) fn set_slot_module(&mut self, slot: ModuleSlotId, value: Value<'v>) {
@@ -804,6 +842,9 @@ impl<'v, 'a, 'e: 'a> Evaluator<'v, 'a, 'e> {
         self.time_flame_profile
             .record_call_enter(const_frozen_string!("trace/walk (profiling)").to_value());
         self.time_flame_profile.trace(tracer);
+        for replacement in &mut self.export_as_replacements {
+            replacement.trace(tracer);
+        }
         self.time_flame_profile.record_call_exit();
     }
 
