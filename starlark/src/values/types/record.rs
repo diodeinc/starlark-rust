@@ -41,7 +41,8 @@
 //! # "#);
 //! ```
 
-pub(crate) mod field;
+/// Field specifications for record types.
+pub mod field;
 pub(crate) mod globals;
 pub(crate) mod instance;
 pub(crate) mod matcher;
@@ -49,4 +50,5 @@ pub(crate) mod record_type;
 pub(crate) mod ty_record_type;
 
 pub use crate::values::record::instance::Record;
+pub use crate::values::record::record_type::FrozenRecordType;
 pub use crate::values::record::record_type::RecordType;

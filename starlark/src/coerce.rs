@@ -112,6 +112,9 @@ where
 
 unsafe impl<From, To> Coerce<SmallSet<To>> for SmallSet<From> where From: Coerce<To> {}
 
+unsafe impl<From, To> Coerce<Option<To>> for Option<From> where From: Coerce<To> {}
+unsafe impl<From, To> CoerceKey<Option<To>> for Option<From> where From: CoerceKey<To> {}
+
 /// Safely convert between types which have a `Coerce` relationship.
 /// Often the second type argument will need to be given explicitly,
 /// e.g. `coerce::<_, ToType>(x)`.
