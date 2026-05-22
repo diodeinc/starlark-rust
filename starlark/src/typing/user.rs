@@ -296,6 +296,24 @@ impl TyCustomImpl for TyUser {
         }
         self.supertypes.iter().any(|x| x == other)
     }
+
+    fn bin_op(
+        &self,
+        bin_op: super::TypingBinOp,
+        rhs: &TyBasic,
+        _ctx: &TypingOracleCtx,
+    ) -> Result<Ty, TypingNoContextOrInternalError> {
+        Ok(self.base.bin_op(bin_op, rhs)?)
+    }
+
+    fn rbin_op(
+        &self,
+        bin_op: super::TypingBinOp,
+        lhs: &TyBasic,
+        _ctx: &TypingOracleCtx,
+    ) -> Result<Ty, TypingNoContextOrInternalError> {
+        Ok(self.base.rbin_op(bin_op, lhs)?)
+    }
 }
 
 #[cfg(test)]
@@ -414,6 +432,14 @@ mod tests {
         fn get_type_starlark_repr() -> Ty {
             Ty::starlark_value::<Fruit>()
         }
+
+        fn add(&self, _other: Value<'v>, _heap: Heap<'v>) -> Option<crate::Result<Value<'v>>> {
+            unreachable!("not needed in tests, but typechecker requires it")
+        }
+
+        fn rdiv(&self, _lhs: Value<'v>, _heap: Heap<'v>) -> Option<crate::Result<Value<'v>>> {
+            unreachable!("not needed in tests, but typechecker requires it")
+        }
     }
 
     #[starlark_module]
@@ -487,6 +513,32 @@ def test():
     # They should intersect.
     takes_pear(mk_fruit())
 "#,
+        );
+    }
+
+    #[test]
+    fn test_ty_user_delegates_bin_ops_to_base_starlark_value() {
+        let mut a = Assert::new();
+        a.globals_add(globals);
+        a.pass(
+            r#"
+Apple = fruit("apple")
+
+def add_apples(x: Apple, y: Apple):
+    return x + y
+
+def divide_by_apple(x: Apple):
+    return 1 / x
+"#,
+        );
+        a.fail(
+            r#"
+Apple = fruit("apple")
+
+def shift_apple(x: Apple, y: Apple):
+    return x << y
+"#,
+            "Binary operator",
         );
     }
 }

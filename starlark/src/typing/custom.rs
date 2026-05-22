@@ -86,6 +86,16 @@ pub trait TyCustomImpl:
         let _unused = (bin_op, rhs, ctx);
         Err(TypingNoContextOrInternalError::Typing)
     }
+    /// Result type of `lhs <op> self`.
+    fn rbin_op(
+        &self,
+        bin_op: TypingBinOp,
+        lhs: &TyBasic,
+        ctx: &TypingOracleCtx,
+    ) -> Result<Ty, TypingNoContextOrInternalError> {
+        let _unused = (bin_op, lhs, ctx);
+        Err(TypingNoContextOrInternalError::Typing)
+    }
     /// Element type when iterating (`for x in self`).
     fn iter_item(&self) -> Result<Ty, TypingNoContextError> {
         Err(TypingNoContextError)
@@ -149,6 +159,12 @@ pub(crate) trait TyCustomDyn:
         &self,
         bin_op: TypingBinOp,
         rhs: &TyBasic,
+        ctx: &TypingOracleCtx,
+    ) -> Result<Ty, TypingNoContextOrInternalError>;
+    fn rbin_op_dyn(
+        &self,
+        bin_op: TypingBinOp,
+        lhs: &TyBasic,
         ctx: &TypingOracleCtx,
     ) -> Result<Ty, TypingNoContextOrInternalError>;
     fn union2_dyn(
@@ -236,6 +252,15 @@ impl<T: TyCustomImpl> TyCustomDyn for T {
         ctx: &TypingOracleCtx,
     ) -> Result<Ty, TypingNoContextOrInternalError> {
         self.bin_op(bin_op, rhs, ctx)
+    }
+
+    fn rbin_op_dyn(
+        &self,
+        bin_op: TypingBinOp,
+        lhs: &TyBasic,
+        ctx: &TypingOracleCtx,
+    ) -> Result<Ty, TypingNoContextOrInternalError> {
+        self.rbin_op(bin_op, lhs, ctx)
     }
 
     fn union2_dyn(
