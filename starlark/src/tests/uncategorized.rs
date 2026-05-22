@@ -836,6 +836,70 @@ assert_eq(len(count), 1)
 }
 
 #[test]
+fn test_export_as_replacement_nested_module_bind() {
+    #[derive(
+        Debug,
+        Display,
+        ProvidesStaticType,
+        NoSerialize,
+        Allocative,
+        StarlarkPagable
+    )]
+    #[display("export_replacement")]
+    struct ExportReplacement {
+        replacement: String,
+        bind_nested: bool,
+    }
+    starlark_simple_value!(ExportReplacement);
+
+    #[starlark_value(type = "export_replacement")]
+    impl<'v> StarlarkValue<'v> for ExportReplacement {
+        fn export_as(
+            &self,
+            variable_name: &str,
+            eval: &mut Evaluator<'v, '_, '_>,
+        ) -> crate::Result<()> {
+            let replacement = eval
+                .heap()
+                .alloc_str(&format!("{}:{variable_name}", self.replacement))
+                .to_value();
+            eval.set_export_as_replacement(replacement)?;
+
+            if self.bind_nested {
+                let nested = eval.heap().alloc(ExportReplacement {
+                    replacement: "inner".to_owned(),
+                    bind_nested: false,
+                });
+                eval.set_module_variable_at_some_point("nested", nested)?;
+            }
+
+            Ok(())
+        }
+    }
+
+    #[starlark_module]
+    fn module(builder: &mut GlobalsBuilder) {
+        fn export_replacement<'v>(heap: Heap<'v>) -> anyhow::Result<Value<'v>> {
+            Ok(heap.alloc(ExportReplacement {
+                replacement: "outer".to_owned(),
+                bind_nested: true,
+            }))
+        }
+    }
+
+    let mut a = Assert::new();
+    a.globals_add(module);
+    a.pass(
+        r#"
+nested = None
+value = export_replacement()
+assert_eq(value, "outer:value")
+assert_eq(nested, "inner:nested")
+"#,
+    );
+}
+
+#[test]
 fn test_self_mutate_list() {
     // Check functions that mutate and access self on lists
     let mut a = Assert::new();
