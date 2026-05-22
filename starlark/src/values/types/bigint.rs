@@ -137,7 +137,11 @@ impl Serialize for StarlarkBigInt {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(&self.value.to_string())
+        if let Some(value) = self.to_i32() {
+            value.serialize(serializer)
+        } else {
+            serializer.serialize_str(&self.value.to_string())
+        }
     }
 }
 
@@ -687,6 +691,18 @@ mod tests {
             "123456789012345678901234567890",
             "int(123456789012345678901234567890)",
         );
+    }
+
+    #[test]
+    fn test_json_serialization() {
+        let big = StarlarkBigInt::unchecked_new(BigInt::from(i64::from(i32::MAX) + 1));
+        assert_eq!(serde_json::to_string(&big).unwrap(), "\"2147483648\"");
+    }
+
+    #[cfg(target_pointer_width = "32")]
+    #[test]
+    fn test_json_serialization_i32_range_on_32_bit() {
+        assert_eq!(assert::pass("2147483647").to_json().unwrap(), "2147483647");
     }
 
     #[test]
