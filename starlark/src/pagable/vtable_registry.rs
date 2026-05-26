@@ -27,6 +27,8 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
+use std::hash::Hash;
+use std::hash::Hasher;
 use std::sync::LazyLock;
 
 use crate::pagable::error::PagableError;
@@ -38,15 +40,37 @@ use crate::values::layout::vtable::AValueVTable;
 /// `std::any::type_name`. It uniquely identifies a concrete Rust type for
 /// deserialization purposes, unlike `StarlarkValue::TYPE` which can be shared
 /// (e.g., "function" for EnumType and NativeFunction).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct DeserTypeId(pub &'static str);
+#[derive(Clone, Copy)]
+pub struct DeserTypeId {
+    type_name: fn() -> &'static str,
+}
+
+impl fmt::Debug for DeserTypeId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("DeserTypeId").field(&self.as_str()).finish()
+    }
+}
+
+impl PartialEq for DeserTypeId {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+impl Eq for DeserTypeId {}
+
+impl Hash for DeserTypeId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_str().hash(state);
+    }
+}
 
 impl pagable::PagableSerialize for DeserTypeId {
     fn pagable_serialize(
         &self,
         serializer: &mut dyn pagable::PagableSerializer,
     ) -> pagable::Result<()> {
-        self.0.pagable_serialize(serializer)
+        self.as_str().pagable_serialize(serializer)
     }
 }
 
@@ -68,25 +92,27 @@ impl DeserTypeId {
     /// Create a `DeserTypeId` for a type.
     #[inline]
     pub const fn of<T: ?Sized>() -> Self {
-        DeserTypeId(std::any::type_name::<T>())
+        DeserTypeId {
+            type_name: std::any::type_name::<T>,
+        }
     }
 
     /// Get the underlying type name string.
     #[inline]
-    pub const fn as_str(&self) -> &'static str {
-        self.0
+    pub fn as_str(&self) -> &'static str {
+        (self.type_name)()
     }
 }
 
 impl Display for DeserTypeId {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        Display::fmt(self.0, f)
+        Display::fmt(self.as_str(), f)
     }
 }
 
 impl Borrow<str> for DeserTypeId {
     fn borrow(&self) -> &str {
-        self.0
+        self.as_str()
     }
 }
 
@@ -222,7 +248,12 @@ mod tests {
     #[test]
     fn test_lookup_nonexistent_type() {
         // Looking up a non-existent type should return an error
-        let result = lookup_vtable(DeserTypeId("this_type_does_not_exist_12345"));
+        fn missing_type_name() -> &'static str {
+            "this_type_does_not_exist_12345"
+        }
+        let result = lookup_vtable(DeserTypeId {
+            type_name: missing_type_name,
+        });
         assert!(result.is_err());
         match result {
             Err(err) => match err.kind() {
