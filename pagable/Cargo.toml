@@ -25,13 +25,10 @@ pagable_derive = { version = "=0.3.3", path = "../pagable_derive" }
 parking_lot = { workspace = true }
 postcard = { workspace = true }
 regex = { workspace = true }
-rusqlite = { version = "0.39.0", features = ["bundled"] }
 sequence_trie = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-sled = { workspace = true }
 smallvec = { workspace = true }
-sorted_vector_map = { workspace = true }
 static_assertions = { workspace = true }
 static_interner = { workspace = true }
 strong_hash = { workspace = true }
