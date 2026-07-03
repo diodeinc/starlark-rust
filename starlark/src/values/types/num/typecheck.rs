@@ -29,10 +29,6 @@ enum NumRhsTy {
     Any,
 }
 
-fn int_or_float() -> Ty {
-    Ty::union2(Ty::int(), Ty::float())
-}
-
 /// Group of operators sharing the typing behavior.
 enum BinOpClass {
     /// If any operand is a float, the result is a float.
@@ -77,10 +73,10 @@ pub(crate) fn typecheck_num_bin_op(lhs: NumTy, op: TypingBinOp, rhs: &TyBasic) -
     match (lhs, op, rhs) {
         (_, BinOpClass::In, _) => None,
         (_, BinOpClass::Less, _) => Some(Ty::bool()),
+        (_, BinOpClass::Add, NumRhsTy::Any) => Some(Ty::any()),
         (NumTy::Float, BinOpClass::Add, _) => Some(Ty::float()),
         (NumTy::Int, BinOpClass::Add, NumRhsTy::Num(NumTy::Int)) => Some(Ty::int()),
         (_, BinOpClass::Add, NumRhsTy::Num(NumTy::Float)) => Some(Ty::float()),
-        (_, BinOpClass::Add, NumRhsTy::Any) => Some(int_or_float()),
         (_, BinOpClass::Div, NumRhsTy::Any) => Some(Ty::any()),
         (_, BinOpClass::Div, _) => Some(Ty::float()),
         (NumTy::Int, BinOpClass::BitAnd, NumRhsTy::Num(NumTy::Int) | NumRhsTy::Any) => {
