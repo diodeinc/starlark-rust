@@ -541,4 +541,24 @@ def shift_apple(x: Apple, y: Apple):
             "Binary operator",
         );
     }
+
+    #[test]
+    fn test_ty_num_bin_op_with_untyped_operand_is_any() {
+        let a = Assert::new();
+        a.pass(
+            r#"
+def mul(x): return (1.0 * x).anything
+def add(x): return (1.0 + x).anything
+def sub(x): return (1.0 - x).anything
+def div(x): return (1.0 / x).anything
+"#,
+        );
+        a.fail(
+            r#"
+def bad():
+    return (1.0 * 2.0).anything
+"#,
+            "not available",
+        );
+    }
 }
