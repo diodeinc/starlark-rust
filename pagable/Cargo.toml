@@ -38,6 +38,11 @@ thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 triomphe = { workspace = true }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# sorted_vector_map currently exposes QuickCheck in its normal dependency graph.
+getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
+getrandom_04 = { package = "getrandom", version = "0.4", features = ["wasm_js"] }
+
 [features]
 default = []
 tokio = ["dep:tokio"]
