@@ -493,7 +493,8 @@ impl<'v> TypeCompiled<Value<'v>> {
         }
     }
 
-    pub(crate) fn from_ty(ty: &Ty, heap: Heap<'v>) -> Self {
+    /// Compile a [`Ty`] into a runtime type matcher.
+    pub fn from_ty(ty: &Ty, heap: Heap<'v>) -> Self {
         TypeCompiledFactory::alloc_ty(ty, heap)
     }
 
