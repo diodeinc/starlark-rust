@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Installs the stable Rust toolchain used by CI and pre-builds the workspace tests.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+if [ ! -x "$HOME/.cargo/bin/rustup" ]; then
+  # The installer also adds ~/.cargo/env to the login shell profiles.
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    --profile minimal --component clippy,rustfmt --target wasm32-unknown-unknown
+fi
+# shellcheck disable=SC1091
+. "$HOME/.cargo/env"
+
+cargo test --workspace --no-run
