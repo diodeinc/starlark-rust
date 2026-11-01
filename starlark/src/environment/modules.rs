@@ -338,6 +338,14 @@ impl FrozenModule {
             .dupe()
             .maybe_map::<Value<'static>, _>(|data| data.value.extra_value)
     }
+
+    /// Like [`extra_value`](FrozenModule::extra_value), but borrowing this module
+    /// instead of sharing ownership of its heap.
+    pub fn extra_value_ref(&self) -> Option<OwnedFrozenRef<'_, Value<'static>>> {
+        self.data
+            .as_ref()
+            .maybe_map::<Value<'static>, _>(|data| data.value.extra_value)
+    }
 }
 
 impl<'v> FrozenModuleData<'v> {
