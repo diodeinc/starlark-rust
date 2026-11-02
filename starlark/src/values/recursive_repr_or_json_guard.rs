@@ -55,8 +55,21 @@ impl Drop for JsonStackGuard {
 /// Returned when `repr` is called recursively and a cycle is detected.
 pub(crate) struct ReprCycle;
 
-/// Returned when `to_json` is called recursively and a cycle is detected.
-pub(crate) struct JsonCycle;
+/// Why a value cannot be serialized to JSON.
+pub(crate) enum JsonStackError {
+    /// The value contains itself.
+    Cycle,
+    /// The value is nested more than [`JSON_ENCODE_DEPTH_LIMIT`] deep.
+    TooDeep,
+}
+
+/// Nesting `to_json` allows, counting every value from the outermost to the innermost, so a deeply
+/// nested value returns an error rather than overflowing the native stack.
+///
+/// Each level costs 10-30 KiB of stack in `erased_serde` and `serde_json` frames: a debug build
+/// overflows a 1 MiB stack (the Windows main thread) at about 60 levels. A fixed limit, rather than
+/// asking how much stack is left, gives the same answer on every platform, build and thread.
+pub(crate) const JSON_ENCODE_DEPTH_LIMIT: usize = 32;
 
 thread_local! {
     static REPR_STACK: Cell<SmallSet<RawPointer>> = const { Cell::new(SmallSet::new()) };
@@ -80,16 +93,19 @@ pub(crate) fn repr_stack_push(value: Value) -> Result<ReprStackGuard, ReprCycle>
     })
 }
 
-/// Push a value to the stack, return error if it is already on the stack.
-pub(crate) fn json_stack_push(value: Value) -> Result<JsonStackGuard, JsonCycle> {
+/// Push a value to the stack, return error if it is already on the stack, or if the stack is
+/// already [`JSON_ENCODE_DEPTH_LIMIT`] deep.
+pub(crate) fn json_stack_push(value: Value) -> Result<JsonStackGuard, JsonStackError> {
     JSON_STACK.with(|json_stack| {
         let mut stack = Cell::take(json_stack);
-        if unlikely(!stack.insert(value.ptr_value())) {
-            json_stack.set(stack);
-            Err(JsonCycle)
+        let res = if unlikely(stack.len() >= JSON_ENCODE_DEPTH_LIMIT) {
+            Err(JsonStackError::TooDeep)
+        } else if unlikely(!stack.insert(value.ptr_value())) {
+            Err(JsonStackError::Cycle)
         } else {
-            json_stack.set(stack);
             Ok(JsonStackGuard)
-        }
+        };
+        json_stack.set(stack);
+        res
     })
 }
