@@ -292,6 +292,7 @@ pub(crate) fn json(globals: &mut GlobalsBuilder) {
 #[cfg(test)]
 mod tests {
     use crate::assert::Assert;
+    use crate::values::recursive_repr_or_json_guard::JSON_ENCODE_DEPTH_LIMIT;
 
     #[test]
     fn test_json_encode() {
@@ -303,6 +304,43 @@ mod tests {
 
         // Test 63-bit integer (largest 63-bit signed integer)
         a.eq("'9223372036854775807'", "json.encode(9223372036854775807)");
+    }
+
+    #[test]
+    fn test_json_encode_depth_limit() {
+        let a = Assert::new();
+        let limit = JSON_ENCODE_DEPTH_LIMIT;
+        // `nest(n, wrap)` is `0` wrapped `n` times, so `n + 1` values deep.
+        let nest = |n: usize, wrap: &str| {
+            format!(
+                "def nest(n, wrap):\n    x = 0\n    for _ in range(n):\n        x = wrap(x)\n    return x\njson.encode(nest({n}, {wrap}))"
+            )
+        };
+        for wrap in [
+            "lambda x: [x]",
+            "lambda x: {'a': x}",
+            "lambda x: struct(a = x)",
+            "lambda x: (x,)",
+        ] {
+            a.pass(&nest(limit - 1, wrap));
+            a.fail(&nest(limit, wrap), "nested too deeply to serialize to JSON");
+            a.fail(
+                &nest(10_000, wrap),
+                "nested too deeply to serialize to JSON",
+            );
+            // A failed encode leaves nothing behind, so the next one starts from depth zero.
+            a.pass(&nest(limit - 1, wrap));
+        }
+        a.eq(
+            &format!("'{}0{}'", "[".repeat(limit - 1), "]".repeat(limit - 1)),
+            &nest(limit - 1, "lambda x: [x]"),
+        );
+
+        // Wide values are not deep: siblings do not count towards the limit.
+        a.pass(&format!("json.encode([[0]] * {})", limit * 10));
+
+        // A cycle is still reported as a cycle.
+        a.fail("x = []\nx.append(x)\njson.encode(x)", "Cycle detected");
     }
 
     #[test]
